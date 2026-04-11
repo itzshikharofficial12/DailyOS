@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { GreetingHeader } from '@/features/work/components/GreetingHeader'
+import { CurrentProjectCard } from '@/features/work/components/CurrentProjectCard'
 import { Hero } from '@/features/work/components/Hero'
 import { TaskList } from '@/features/work/components/TaskListRefactored'
 import { FocusTimer } from '@/features/work/components/FocusTimerRefactored'
@@ -11,12 +13,11 @@ import { QuickStats } from '@/features/work/components/QuickStatsRefactored'
 import { IdeasPanel } from '@/features/work/components/IdeasPanelRefactored'
 import { LinksPanel } from '@/features/work/components/LinksPanelRefactored'
 
-const PROJECTS = [
-  { id: 1, title: 'DailyOS Core',        desc: 'Main app shell, routing, and layout system',  status: 'active',  tags: ['Next.js', 'TypeScript'] },
-  { id: 2, title: 'Auth Service',         desc: 'Supabase integration, session handling',       status: 'review',  tags: ['Supabase', 'JWT']        },
-  { id: 3, title: 'Analytics Pipeline',   desc: 'Event tracking and dashboard metrics',         status: 'planned', tags: ['Postgres', 'Cron']       },
-  { id: 4, title: 'Mobile PWA',           desc: 'Offline-first progressive web app',            status: 'active',  tags: ['PWA', 'IndexedDB']       },
-]
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+)
 
 const SCHEDULE = [
   { label: 'Standup call',        time: '9:00 AM',   type: 'upcoming' },
@@ -44,6 +45,53 @@ const STATS = [
 export default function WorkPage() {
   const [newTask, setNewTask] = useState('')
   const [goal, setGoal]       = useState('')
+  const [projects, setProjects] = useState<any[]>([])  // Start with empty array
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Fetch projects from Supabase
+  const fetchProjects = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error fetching projects:', error)
+        setError(error.message)
+        setProjects([])  // Show empty state instead of fallback
+        return
+      }
+
+      if (data && data.length > 0) {
+        // Map Supabase columns to component props
+        const mappedProjects = data.map((project: any) => ({
+          id: project.id,
+          title: project.title,
+          desc: project.description,  // Map DB 'description' to 'desc'
+          status: project.status,
+          tags: project.tech_stack || [],  // Map DB 'tech_stack' to 'tags'
+        }))
+        setProjects(mappedProjects)
+      } else {
+        // No projects in DB - show empty
+        setProjects([])
+      }
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+      setError(error instanceof Error ? error.message : 'Unknown error')
+      setProjects([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProjects()
+  }, [])
 
   return (
     <div
@@ -72,16 +120,17 @@ export default function WorkPage() {
         {/* LEFT MAIN */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Hero goal={goal} onGoalChange={setGoal} />
+            <Hero goal={goal} onGoalChange={setGoal} projects={projects} />
             <TaskList newTask={newTask} onNewTaskChange={setNewTask} />
             <FocusTimer />
-            <ProjectGrid projects={PROJECTS} />
+            <ProjectGrid projects={projects} onProjectAdded={fetchProjects} />
             <ScheduleList schedule={SCHEDULE} />
           </div>
         </div>
 
         {/* RIGHT PANEL */}
         <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <CurrentProjectCard projects={projects} />
           <QuickStats stats={STATS} />
           <IdeasPanel />
           <LinksPanel links={LINKS} />

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MC_STYLES } from './mc-styles'
 import { ProjectForm } from './ProjectForm'
 import { ProjectModal } from './ProjectModal'
@@ -15,6 +16,7 @@ interface Project {
 
 interface ProjectGridProps {
   projects: Project[]
+  onProjectAdded?: () => void
 }
 
 const STATUS_MAP: Record<string, { dot: string; cls: string; label: string }> = {
@@ -23,8 +25,9 @@ const STATUS_MAP: Record<string, { dot: string; cls: string; label: string }> = 
   planned: { dot: '#52525b', cls: 'mc-badge-planned', label: 'PLANNED' },
 }
 
-export function ProjectGrid({ projects }: ProjectGridProps) {
+export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   return (
     <>
@@ -66,13 +69,14 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
             return (
               <div
                 key={p.id}
+                onClick={() => router.push(`/work/${p.id}`)}
                 style={{
                   background: 'rgba(9,9,11,0.8)',
                   border: '1px solid rgba(39,39,42,0.8)',
                   borderRadius: 8,
                   padding: 12,
                   transition: 'border-color 0.15s',
-                  cursor: 'default',
+                  cursor: 'pointer',
                   position: 'relative',
                   overflow: 'hidden',
                 }}
@@ -110,7 +114,10 @@ export function ProjectGrid({ projects }: ProjectGridProps) {
 
       {open && (
         <ProjectModal onClose={() => setOpen(false)}>
-          <ProjectForm />
+          <ProjectForm onProjectAdded={() => {
+            setOpen(false)
+            if (onProjectAdded) onProjectAdded()
+          }} />
         </ProjectModal>
       )}
     </>

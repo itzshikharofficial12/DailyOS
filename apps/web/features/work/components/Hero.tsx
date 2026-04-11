@@ -1,15 +1,43 @@
 'use client'
 
 import { useState } from 'react'
+import { useCurrentProject } from '@/store/useCurrentProject'
+
+interface Project {
+  id: string | number
+  title: string
+  desc: string
+  status: string
+  tags?: string[]
+  github_url?: string | null
+  docs_url?: string | null
+  live_url?: string | null
+}
 
 interface HeroProps {
   goal: string
   onGoalChange: (goal: string) => void
+  projects?: Project[]
 }
 
-const STACK_TAGS = ['React', 'Supabase', 'Tailwind', 'Next.js']
+const DEFAULT_STACK_TAGS = ['React', 'Supabase', 'Tailwind', 'Next.js']
 
-export function Hero({ goal, onGoalChange }: HeroProps) {
+export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
+  const { currentProjectId } = useCurrentProject()
+
+  // Get current project from Zustand ID, or fallback to first active
+  let currentProject = projects.find((p) => p.id.toString() === currentProjectId && p.status === 'active')
+  if (!currentProject) {
+    currentProject = projects.find((p) => p.status === 'active')
+  }
+
+  // Use project data if available, otherwise use defaults
+  const title = currentProject?.title || 'DailyOS Dashboard'
+  const description = currentProject?.desc || 'Personal operating system · focused, intentional work'
+  const stackTags = currentProject?.tags || DEFAULT_STACK_TAGS
+  const githubUrl = currentProject?.github_url
+  const docsUrl = currentProject?.docs_url
+  const liveUrl = currentProject?.live_url
   const now = new Date()
   const ts = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-${String(now.getUTCDate()).padStart(2,'0')} ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`
 
@@ -30,7 +58,7 @@ export function Hero({ goal, onGoalChange }: HeroProps) {
               <span className="mc-mono mc-label">SYS ONLINE</span>
             </div>
             <div style={{ width: 1, height: 10, background: '#27272a' }} />
-            <span className="mc-mono mc-label">DAILYOS · MISSION CTRL</span>
+            <span className="mc-mono mc-label">NEXUS · MISSION CTRL</span>
           </div>
           <span className="mc-mono mc-label" style={{ color: '#27272a' }}>{ts}</span>
         </div>
@@ -42,7 +70,7 @@ export function Hero({ goal, onGoalChange }: HeroProps) {
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Stack tags */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                {STACK_TAGS.map((t) => (
+                {stackTags.map((t: string) => (
                   <span key={t} className="mc-tag mc-mono" style={{ fontSize: 9 }}>
                     <span style={{ color: '#3b82f6', marginRight: 3 }}>#</span>{t}
                   </span>
@@ -57,11 +85,10 @@ export function Hero({ goal, onGoalChange }: HeroProps) {
                   fontFamily: 'Syne, sans-serif',
                 }}
               >
-                DailyOS Dashboard
+                {title}
               </h1>
               <p className="mc-mono" style={{ fontSize: 11, color: '#52525b', marginBottom: 16 }}>
-                Personal operating system · focused, intentional work
-              </p>
+                {description}</p>
 
               {/* Goal input */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
@@ -97,6 +124,45 @@ export function Hero({ goal, onGoalChange }: HeroProps) {
               </button>
               <button className="mc-btn-secondary">View Log</button>
               <button className="mc-btn-secondary">Settings</button>
+              
+              {/* Project links */}
+              {(githubUrl || docsUrl || liveUrl) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8, paddingTop: 8, borderTop: '1px solid #27272a' }}>
+                  {githubUrl && (
+                    <a
+                      href={githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mc-btn-secondary"
+                      style={{ fontSize: 10, padding: '6px 10px', textAlign: 'center' }}
+                    >
+                      GitHub
+                    </a>
+                  )}
+                  {docsUrl && (
+                    <a
+                      href={docsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mc-btn-secondary"
+                      style={{ fontSize: 10, padding: '6px 10px', textAlign: 'center' }}
+                    >
+                      Docs
+                    </a>
+                  )}
+                  {liveUrl && (
+                    <a
+                      href={liveUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mc-btn-secondary"
+                      style={{ fontSize: 10, padding: '6px 10px', textAlign: 'center' }}
+                    >
+                      Live
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

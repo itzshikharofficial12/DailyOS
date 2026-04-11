@@ -5,28 +5,53 @@ import { supabase } from '@/lib/supabase'
 
 interface Idea {
   id: number
+  project_id: string
   content: string
   created_at: string
 }
 
 export function IdeasPanel() {
+  console.log('IDEAS PANEL RENDERED')
+
   const [idea, setIdea] = useState('')
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [savedIdea, setSavedIdea] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchIdeas() }, [])
+  useEffect(() => {
+    fetchData()
+  }, [])
 
-  const fetchIdeas = async () => {
+  const fetchData = async () => {
+    console.log('FETCHING ALL IDEAS')
+
     try {
       setLoading(true)
-      const { data, error: supabaseError } = await supabase
-        .from('ideas').select('*').order('created_at', { ascending: false })
-      if (supabaseError) throw supabaseError
-      setIdeas(data || [])
+
+      // Fetch all ideas
+      const { data, error } = await supabase
+        .from('ideas')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      console.log('IDEAS DATA:', data)
+      console.log('IDEAS ERROR:', error)
+
+      if (error) {
+        console.error('IDEAS FETCH ERROR:', error.message || error)
+        return
+      }
+
+      if (!data) {
+        setIdeas([])
+        return
+      }
+
+      setIdeas(data)
       setError(null)
-    } catch {
+    } catch (err) {
+      console.error('Fetch error:', err)
       setError('ERR: Failed to load')
     } finally {
       setLoading(false)
@@ -36,8 +61,11 @@ export function IdeasPanel() {
   const handleSaveIdea = async () => {
     if (!idea.trim()) return
     try {
+      console.log('Saving global idea')
       const { data, error: supabaseError } = await supabase
-        .from('ideas').insert([{ content: idea.trim() }]).select()
+        .from('ideas')
+        .insert([{ content: idea.trim() }])
+        .select()
       if (supabaseError) throw supabaseError
       if (data?.length) setIdeas((prev) => [data[0], ...prev])
       setIdea('')
@@ -47,6 +75,26 @@ export function IdeasPanel() {
     } catch {
       setError('ERR: Save failed')
       setTimeout(() => setError(null), 2000)
+    }
+  }
+
+  const handleDeleteIdea = async (ideaId: number) => {
+    try {
+      console.log('Deleting idea:', ideaId)
+      const { error } = await supabase
+        .from('ideas')
+        .delete()
+        .eq('id', ideaId)
+
+      if (error) {
+        console.error('DELETE ERROR:', error.message || error)
+        return
+      }
+
+      console.log('Idea deleted successfully')
+      setIdeas((prev) => prev.filter((item) => item.id !== ideaId))
+    } catch (err) {
+      console.error('Delete catch error:', err)
     }
   }
 
@@ -83,7 +131,7 @@ export function IdeasPanel() {
           </button>
 
           {/* Ideas log */}
-          {ideas.length > 0 && (
+          {ideas.length > 0 ? (
             <div style={{ marginTop: 4 }}>
               <div className="mc-mono mc-label" style={{ marginBottom: 8 }}>RECENT LOG</div>
               <div
@@ -93,20 +141,31 @@ export function IdeasPanel() {
                 {ideas.map((item, i) => (
                   <div
                     key={item.id}
-                    className="mc-mono text-xs text-zinc-400/80"
+                    className="group flex justify-between items-start gap-2"
                     style={{
                       padding: '6px 9px',
                       background: 'rgba(9,9,11,0.8)',
                       border: '1px solid rgba(39,39,42,0.6)',
-                      borderRadius: 5, lineHeight: 1.5,
+                      borderRadius: 5,
+                      lineHeight: 1.5,
                     }}
                   >
-                    <span className="text-zinc-600" style={{ marginRight: 6 }}>{String(i + 1).padStart(2, '0')}</span>
-                    {item.content}
+                    <div className="mc-mono text-xs text-zinc-400/80 flex gap-2" style={{ flex: 1 }}>
+                      <span className="text-zinc-600">{String(i + 1).padStart(2, '0')}</span>
+                      <span>{item.content}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteIdea(item.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-zinc-500 hover:text-red-400 cursor-pointer flex-shrink-0"
+                    >
+                      ✕
+                    </button>
                   </div>
                 ))}
               </div>
             </div>
+          ) : (
+            <p className="text-zinc-400 text-sm">No ideas yet</p>
           )}
         </div>
       </div>

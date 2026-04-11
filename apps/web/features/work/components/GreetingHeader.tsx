@@ -33,9 +33,9 @@ export function GreetingHeader() {
       </div>
 
       {/* Right: Status */}
-      <div className="flex ml-10 items-center gap-2">
-        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-        <span className="text-xs text-zinc-500 tracking-wide">CURRENTLY ALIVE</span>
+      <div className="flex ml-10 items-center gap-1.5">
+        <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+        <span className="text-xs text-zinc-400 tracking-[0.12em]">CURRENTLY ALIVE</span>
       </div>
     </div>
   )

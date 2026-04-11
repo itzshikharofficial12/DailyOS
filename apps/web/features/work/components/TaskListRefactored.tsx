@@ -63,6 +63,26 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
     }
   }
 
+  const deleteTask = async (id: number) => {
+    try {
+      console.log('Deleting task:', id)
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('TASK DELETE ERROR:', error.message || error)
+        return
+      }
+
+      console.log('Task deleted successfully')
+      setTasks((prev) => prev.filter((task) => task.id !== id))
+    } catch (err) {
+      console.error('Delete catch error:', err)
+    }
+  }
+
   const done = tasks.filter((t) => t.done).length
 
   return (
@@ -117,8 +137,9 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
               {tasks.map((task) => (
                 <li
                   key={task.id}
+                  className="group"
                   onClick={() => toggleTask(task.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, border: '1px solid transparent', transition: 'border-color 0.15s, background 0.15s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, cursor: 'pointer', padding: '6px 8px', borderRadius: 6, border: '1px solid transparent', transition: 'border-color 0.15s, background 0.15s' }}
                   onMouseEnter={(e) => {
                     (e.currentTarget as HTMLLIElement).style.borderColor = 'rgba(39,39,42,0.8)'
                     ;(e.currentTarget as HTMLLIElement).style.background = 'rgba(24,24,27,0.5)'
@@ -128,31 +149,53 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
                     ;(e.currentTarget as HTMLLIElement).style.background = 'transparent'
                   }}
                 >
-                  {/* Checkbox */}
-                  <span style={{
-                    width: 14, height: 14, borderRadius: 3, flexShrink: 0,
-                    border: task.done ? '1px solid #3b82f6' : '1px solid #3f3f46',
-                    background: task.done ? 'rgba(59,130,246,0.2)' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}>
-                    {task.done && (
-                      <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
-                        <path d="M1 3.5l2 2 4-4" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </span>
-                  <span
-                    className="mc-mono"
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                    {/* Checkbox */}
+                    <span style={{
+                      width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                      border: task.done ? '1px solid #3b82f6' : '1px solid #3f3f46',
+                      background: task.done ? 'rgba(59,130,246,0.2)' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}>
+                      {task.done && (
+                        <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
+                          <path d="M1 3.5l2 2 4-4" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </span>
+                    <span
+                      className="mc-mono"
+                      style={{
+                        fontSize: 11, flex: 1,
+                        color: task.done ? '#3f3f46' : '#a1a1aa',
+                        textDecoration: task.done ? 'line-through' : 'none',
+                        transition: 'color 0.15s',
+                      }}
+                    >
+                      {task.done ? `// ${task.text}` : `→ ${task.text}`}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteTask(task.id)
+                    }}
+                    className="mc-mono opacity-0 group-hover:opacity-100 transition-opacity"
                     style={{
-                      fontSize: 11, flex: 1,
-                      color: task.done ? '#3f3f46' : '#a1a1aa',
-                      textDecoration: task.done ? 'line-through' : 'none',
+                      fontSize: 10,
+                      color: '#71717a',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      border: 'none',
                       transition: 'color 0.15s',
                     }}
+                    onMouseEnter={(e) => (e.currentTarget as HTMLButtonElement).style.color = '#ef4444'}
+                    onMouseLeave={(e) => (e.currentTarget as HTMLButtonElement).style.color = '#71717a'}
                   >
-                    {task.done ? `// ${task.text}` : `→ ${task.text}`}
-                  </span>
+                    ✕
+                  </button>
                 </li>
               ))}
               {tasks.length === 0 && (

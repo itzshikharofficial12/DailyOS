@@ -4,7 +4,7 @@ import { Task } from '@/lib/types/task'
 
 interface TaskStore {
   tasks: Task[]
-  addTask: (title: string) => void
+  addTask: (title: string, projectId?: string) => void
   toggleTask: (id: string) => void
   removeTask: (id: string) => void
 }
@@ -13,7 +13,7 @@ export const useTaskStore = create<TaskStore>()(
   persist(
     (set) => ({
       tasks: [],
-      addTask: (title: string) =>
+      addTask: (title: string, projectId?: string) =>
         set((state) => ({
           tasks: [
             ...state.tasks,
@@ -22,6 +22,7 @@ export const useTaskStore = create<TaskStore>()(
               title,
               completed: false,
               createdAt: new Date().toISOString(),
+              ...(projectId && { projectId }),
             },
           ],
         })),

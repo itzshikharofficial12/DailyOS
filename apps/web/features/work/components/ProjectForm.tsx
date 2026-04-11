@@ -1,6 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+)
 
 interface ProjectFormData {
   title: string
@@ -200,7 +207,7 @@ const SECTION_ICONS: Record<string, string> = {
   notes: '≡',
 }
 
-export function ProjectForm() {
+export function ProjectForm({ onProjectAdded }: { onProjectAdded?: () => void }) {
   const [formData, setFormData] = useState<ProjectFormData>({
     title: '',
     description: '',
@@ -228,11 +235,68 @@ export function ProjectForm() {
     setFormData((prev) => ({ ...prev, techStack }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => setSubmitted(false), 2500)
-    console.log('Project Form Data:', formData)
+    
+    // Prepare data for insertion - MATCH DB COLUMNS EXACTLY
+    const projectData = {
+      title: formData.title || '',
+      description: formData.description || '',  // Use 'description' not 'desc'
+      status: formData.status.toLowerCase(),     // Ensure lowercase
+      tech_stack: formData.techStack && formData.techStack.length > 0
+        ? formData.techStack
+        : [],  // Convert to array if needed
+      requirements: formData.requirements || '',
+      goal: formData.goal || '',
+      notes: formData.notes || '',
+      github_url: formData.githubUrl || null,
+      docs_url: formData.docsUrl || null,
+      live_url: formData.liveUrl || null,
+    }
+
+    try {
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([projectData])
+        .select()
+      
+      console.log('INSERT DATA:', data)
+      console.log('INSERT ERROR:', error)
+      
+      if (error) {
+        console.error('Error inserting project:', error.message || error)
+        return
+      }
+      
+      console.log('Project inserted successfully:', data)
+      
+      // Reset form on success
+      setFormData({
+        title: '',
+        description: '',
+        status: 'active',
+        techStack: [],
+        projectType: '',
+        requirements: '',
+        goal: '',
+        githubUrl: '',
+        docsUrl: '',
+        liveUrl: '',
+        notes: '',
+      })
+      
+      // Show success message
+      setSubmitted(true)
+      setTimeout(() => setSubmitted(false), 2500)
+      
+      // Trigger refetch of projects
+      if (onProjectAdded) {
+        onProjectAdded()
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error)
+    }
   }
 
   const now = new Date()
