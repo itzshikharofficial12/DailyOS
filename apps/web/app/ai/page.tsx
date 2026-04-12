@@ -636,7 +636,7 @@ export default function AIPage() {
   }
 
   return (
-    <div className="nova-wrap" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
+    <div className="nova-wrap" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
       <style>{NOVA_STYLES}</style>
 
       {/* ── HEADER ── */}
@@ -648,6 +648,10 @@ export default function AIPage() {
         flexShrink: 0,
         position: 'relative',
         zIndex: 10,
+        width: '100%',
+        minHeight: 'auto',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}>
         <div className="nc nc-tl" /><div className="nc nc-tr" />
 
@@ -798,6 +802,8 @@ export default function AIPage() {
         position: 'relative',
         zIndex: 10,
         width: '100%',
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}>
         <div className="nc nc-tl" /><div className="nc nc-tr" />
 
