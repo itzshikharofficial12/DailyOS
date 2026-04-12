@@ -53,9 +53,10 @@ function generateInsights(tasks: any[], events: any[], projects: any[], ideas: a
 
 export async function POST(req: Request) {
   try {
-    const { message } = await req.json()
+    const { message, conversationId } = await req.json()
 
     console.log('Sending message:', message)
+    console.log('Conversation ID:', conversationId)
     console.log('GROQ_API_KEY exists:', !!process.env.GROQ_API_KEY)
 
     if (!message) {
@@ -169,6 +170,38 @@ export async function POST(req: Request) {
     console.log('Project context:', projectContext)
     console.log('Idea context:', ideaContext)
 
+    // Fetch last 10 messages from conversation for context
+    let conversationMessages: any[] = []
+    if (conversationId) {
+      const { data: dbMessages, error: messagesError } = await supabase
+        .from('messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true })
+        .limit(10)
+
+      if (messagesError) {
+        console.error('Error fetching conversation messages:', messagesError)
+      } else {
+        conversationMessages = dbMessages || []
+        console.log(`📬 Fetched ${conversationMessages.length} messages from conversation`)
+      }
+    }
+
+    // Build messages array: past messages + current user message
+    const messagesForAI: any[] = [
+      ...conversationMessages.map((m: any) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      })),
+      {
+        role: 'user',
+        content: message,
+      },
+    ]
+
+    console.log(`📨 Sending ${messagesForAI.length} messages to AI (including current)`)
+
     const completion = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       messages: [
@@ -221,10 +254,7 @@ ${ideaContext}
 
 If data is missing, say "No data available"`,
         },
-        {
-          role: 'user',
-          content: message,
-        },
+        ...(messagesForAI as any[]),
       ],
     })
 

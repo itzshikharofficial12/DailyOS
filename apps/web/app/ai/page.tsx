@@ -425,7 +425,7 @@ export default function AIPage() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
+        body: JSON.stringify({ message: userMessage, conversationId }),
       })
       if (!res.ok) throw new Error('API error')
       const { reply } = await res.json()
