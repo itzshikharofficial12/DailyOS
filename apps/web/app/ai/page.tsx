@@ -248,6 +248,7 @@ export default function AIPage() {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
   const [insights, setInsights] = useState<string[]>([])
+  const [autoSentOnce, setAutoSentOnce] = useState(false)
   const bottomRef             = useRef<HTMLDivElement>(null)
   const inputRef              = useRef<HTMLInputElement>(null)
 
@@ -375,6 +376,114 @@ export default function AIPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-send system overview query on page load if no messages
+  const sendAutoQuery = async (userMessage: string) => {
+    if (!conversationId || loading) return
+    
+    console.log('🤖 Auto-sending query:', userMessage)
+    const userMsg: Message = { id: Date.now().toString(), type: 'user', content: userMessage, timestamp: new Date() }
+    setMessages(p => [...p, userMsg])
+    setLoading(true)
+
+    // Insert user message into database
+    ;(async () => {
+      try {
+        if (!conversationId || conversationId.startsWith('local_')) {
+          console.error('Invalid conversationId:', conversationId)
+          return
+        }
+        
+        const { error } = await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          role: 'user',
+          content: userMessage,
+        })
+
+        if (error) {
+          console.error('❌ User message save failed:', error.message)
+        } else {
+          console.log('✓ User message saved to DB')
+        }
+      } catch (err) {
+        console.error('Error saving user message:', err)
+      }
+    })()
+
+    const aiMsg: Message = { id: (Date.now()+1).toString(), type: 'ai', content: '', timestamp: new Date() }
+    setMessages(p => [...p, aiMsg])
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      })
+      if (!res.ok) throw new Error('API error')
+      const { reply } = await res.json()
+      
+      // Stream response
+      let i = 0
+      const iv = setInterval(() => {
+        i++
+        const text = reply.substring(0, i)
+        setMessages(p => {
+          const u = [...p]
+          const last = u[u.length - 1]
+          if (last.type === 'ai') last.content = text
+          return u
+        })
+        if (i >= reply.length) { 
+          clearInterval(iv)
+          setLoading(false)
+          
+          // Insert AI response into database
+          if (conversationId) {
+            ;(async () => {
+              try {
+                if (!conversationId || conversationId.startsWith('local_')) {
+                  console.error('Invalid conversationId:', conversationId)
+                  return
+                }
+                
+                const { error } = await supabase.from('messages').insert({
+                  conversation_id: conversationId,
+                  role: 'assistant',
+                  content: reply,
+                })
+
+                if (error) {
+                  console.error('❌ AI message save failed:', error.message)
+                } else {
+                  console.log('✓ AI message saved to DB')
+                }
+              } catch (err) {
+                console.error('Error saving AI message:', err)
+              }
+            })()
+          }
+        }
+      }, 18)
+    } catch {
+      setMessages(p => {
+        const u = [...p]
+        const last = u[u.length - 1]
+        if (last.type === 'ai') last.content = 'ERR: Signal lost. Failed to reach inference endpoint. Please retry.'
+        return u
+      })
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!autoSentOnce && conversationId && messages.length === 1 && !loading) {
+      console.log('🤖 No messages found, triggering auto query...')
+      setAutoSentOnce(true)
+      setTimeout(() => {
+        sendAutoQuery('give me a quick overview of my system')
+      }, 300)
+    }
+  }, [autoSentOnce, conversationId, messages.length, loading])
 
   const send = async () => {
     if (!input.trim() || loading) return
