@@ -74,14 +74,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: '#000000',
-      fontFamily: 'JetBrains Mono, monospace',
-    }}>
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
       <div style={{
         width: '100%',
         maxWidth: 400,
