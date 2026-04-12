@@ -18,6 +18,8 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
 
   const fetchTasks = async () => {
     try {
@@ -80,6 +82,36 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
       setTasks((prev) => prev.filter((task) => task.id !== id))
     } catch (err) {
       console.error('Delete catch error:', err)
+    }
+  }
+
+  const handleEditTask = (taskId: number, currentText: string) => {
+    setEditingId(taskId)
+    setEditValue(currentText)
+  }
+
+  const handleSaveEdit = async (taskId: number) => {
+    if (!editValue.trim()) {
+      setEditingId(null)
+      return
+    }
+
+    try {
+      const { error: supabaseError } = await supabase
+        .from('tasks')
+        .update({ text: editValue })
+        .eq('id', taskId)
+
+      if (supabaseError) throw supabaseError
+
+      console.log('Task updated successfully')
+      setTasks((prev) =>
+        prev.map((task) => (task.id === taskId ? { ...task, text: editValue } : task))
+      )
+      setEditingId(null)
+    } catch (err) {
+      console.error('Edit save error:', err)
+      setError('ERR: Failed to update task')
     }
   }
 
@@ -164,17 +196,51 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
                         </svg>
                       )}
                     </span>
-                    <span
-                      className="mc-mono"
-                      style={{
-                        fontSize: 11, flex: 1,
-                        color: task.done ? '#3f3f46' : '#a1a1aa',
-                        textDecoration: task.done ? 'line-through' : 'none',
-                        transition: 'color 0.15s',
-                      }}
-                    >
-                      {task.done ? `// ${task.text}` : `→ ${task.text}`}
-                    </span>
+                    {editingId === task.id ? (
+                      <input
+                        autoFocus
+                        type="text"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => handleSaveEdit(task.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEdit(task.id)
+                          if (e.key === 'Escape') setEditingId(null)
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mc-mono"
+                        style={{
+                          fontSize: 11, flex: 1,
+                          color: '#a1a1aa',
+                          background: 'transparent',
+                          outline: 'none',
+                          border: 'none',
+                          borderBottom: '1px solid rgba(59,130,246,0.5)',
+                          transition: 'border-color 0.15s',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditTask(task.id, task.text)
+                        }}
+                        className="mc-mono"
+                        style={{
+                          fontSize: 11, flex: 1,
+                          color: task.done ? '#3f3f46' : '#a1a1aa',
+                          textDecoration: task.done ? 'line-through' : 'none',
+                          transition: 'color 0.15s',
+                          cursor: 'text',
+                          padding: '0 2px',
+                          borderRadius: '3px',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget as HTMLSpanElement).style.background = 'rgba(59,130,246,0.1)'}
+                        onMouseLeave={(e) => (e.currentTarget as HTMLSpanElement).style.background = 'transparent'}
+                      >
+                        {task.done ? `// ${task.text}` : `→ ${task.text}`}
+                      </span>
+                    )}
                   </div>
                   <button
                     onClick={(e) => {
