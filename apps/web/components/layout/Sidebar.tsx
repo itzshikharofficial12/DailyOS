@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { MC_STYLES } from "@/features/work/components/mc-styles";
+import { supabase } from "@/lib/supabaseClient";
 
 interface NavItem {
   label: string;
@@ -112,8 +113,18 @@ function NovaAvatar({ active }: { active: boolean }) {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const isActive = (href: string) => pathname === href || pathname.startsWith(href);
   const novaActive = isActive("/ai");
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+      router.push('/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
 
   return (
     <>
@@ -237,6 +248,23 @@ export default function Sidebar() {
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
             <span className="mc-mono text-xs text-zinc-400 tracking-wide">OPERATIONAL</span>
           </div>
+        </div>
+
+        {/* USER SECTION */}
+        <div className="px-4 py-4 border-t border-zinc-800 mt-auto">
+          <button
+            onClick={handleLogout}
+            className="w-full px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 rounded-lg transition-colors"
+            style={{
+              fontSize: '12px',
+              color: '#d4d4d8',
+              cursor: 'pointer',
+              letterSpacing: '0.05em',
+              fontFamily: 'JetBrains Mono, monospace',
+            }}
+          >
+            LOGOUT
+          </button>
         </div>
 
       </aside>
