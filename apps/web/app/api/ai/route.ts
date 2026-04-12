@@ -64,25 +64,33 @@ async function detectAndStoreIdentity(message: string) {
     const match = message.match(pattern)
     if (match) {
       const name = match[1].trim()
+      const key = 'name'
+      const value = name
+      
       console.log(`👤 Detected name: ${name}`)
+      console.log('Saving memory:', key, value)
       
       try {
-        // Upsert name into user_memory table
+        // Insert into user_memory table
         const { data, error } = await supabase
           .from('user_memory')
           .upsert(
-            { key: 'name', value: name, updated_at: new Date().toISOString() },
+            { 
+              key: key, 
+              value: value, 
+              updated_at: new Date().toISOString() 
+            },
             { onConflict: 'key' }
           )
           .select()
 
         if (error) {
-          console.error('Error storing name:', error.message)
+          console.error('❌ Error storing memory:', error.message)
         } else {
-          console.log('✓ Name stored in user_memory:', name)
+          console.log('✓ Memory saved to user_memory:', { key, value })
         }
       } catch (err) {
-        console.error('Error in detectAndStoreIdentity:', err)
+        console.error('❌ Error in detectAndStoreIdentity:', err)
       }
       
       return name
