@@ -108,17 +108,24 @@ export default function ProjectDetailPage() {
   }
 
   const handleBuild = () => {
-    if (!project?.github_url) return
+    if (!project?.github_url) {
+      console.warn('No GitHub URL available')
+      return
+    }
 
     const vscodeUrl = getVSCodeUrl(project.github_url)
 
     if (!vscodeUrl) {
-      console.error('Invalid GitHub URL')
+      console.error('Failed to generate VS Code URL from:', project.github_url)
       return
     }
 
+    console.log('Opening VS Code URL:', vscodeUrl)
+    
     // Open VS Code web editor
-    window.open(vscodeUrl, "_blank")
+    if (typeof window !== 'undefined') {
+      window.open(vscodeUrl, "_blank")
+    }
   }
 
   if (loading) {
@@ -301,38 +308,40 @@ export default function ProjectDetailPage() {
             >
               DELETE
             </button>
-            {project?.github_url && (
-              <button
-                onClick={handleBuild}
-                style={{
-                  fontSize: 11,
-                  letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  color: '#60a5fa',
-                  border: '1px solid rgba(59,130,246,0.2)',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  fontFamily: 'JetBrains Mono, monospace',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
+            <button
+              onClick={handleBuild}
+              disabled={!project?.github_url}
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase',
+                color: project?.github_url ? '#60a5fa' : '#71717a',
+                border: `1px solid ${project?.github_url ? 'rgba(59,130,246,0.2)' : 'rgba(113,113,122,0.2)'}`,
+                padding: '6px 12px',
+                borderRadius: '6px',
+                background: 'transparent',
+                cursor: project?.github_url ? 'pointer' : 'not-allowed',
+                fontFamily: 'JetBrains Mono, monospace',
+                transition: 'all 0.2s',
+                opacity: project?.github_url ? 1 : 0.5,
+              }}
+              onMouseEnter={(e) => {
+                if (project?.github_url) {
                   const el = e.currentTarget as HTMLButtonElement
                   el.style.color = '#93c5fd'
                   el.style.background = 'rgba(59,130,246,0.1)'
                   el.style.borderColor = 'rgba(59,130,246,0.3)'
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement
-                  el.style.color = '#60a5fa'
-                  el.style.background = 'transparent'
-                  el.style.borderColor = 'rgba(59,130,246,0.2)'
-                }}
-              >
-                OPEN IN VSCODE
-              </button>
-            )}
+                }
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLButtonElement
+                el.style.color = project?.github_url ? '#60a5fa' : '#71717a'
+                el.style.background = 'transparent'
+                el.style.borderColor = project?.github_url ? 'rgba(59,130,246,0.2)' : 'rgba(113,113,122,0.2)'
+              }}
+            >
+              OPEN IN VSCODE
+            </button>
           </div>
 
           {/* Title */}
