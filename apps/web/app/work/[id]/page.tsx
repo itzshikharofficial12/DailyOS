@@ -343,6 +343,20 @@ export default function ProjectDetailPage() {
             >
               OPEN IN VSCODE
             </button>
+            {!project?.github_url && (
+              <span
+                style={{
+                  fontSize: 11,
+                  color: '#a1a1aa',
+                  fontFamily: 'JetBrains Mono, monospace',
+                  padding: '6px 12px',
+                  letterSpacing: '0.05em',
+                }}
+                title="Add a GitHub repository URL to this project to enable VS Code web editor"
+              >
+                → Enter GitHub Link
+              </span>
+            )}
           </div>
 
           {/* Title */}
