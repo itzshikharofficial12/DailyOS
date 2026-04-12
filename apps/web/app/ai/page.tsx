@@ -642,7 +642,7 @@ export default function AIPage() {
       {/* ── HEADER ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 18px',
+        padding: '20px 18px 10px 18px',
         borderBottom: '1px solid rgba(39,39,42,0.8)',
         background: 'rgba(9,9,11,0.97)',
         flexShrink: 0,
