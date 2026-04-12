@@ -34,48 +34,11 @@ const supabase = createClient(
 export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
-  const [editingField, setEditingField] = useState<'title' | 'desc' | null>(null)
-  const [editingValue, setEditingValue] = useState('')
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const router = useRouter()
 
-  const handleFieldClick = (e: React.MouseEvent, projectId: number, field: 'title' | 'desc', value: string) => {
-    e.stopPropagation()
+  const handleEditProject = (projectId: number) => {
     setEditingId(projectId)
-    setEditingField(field)
-    setEditingValue(value)
-  }
-
-  const handleSave = async (projectId: number) => {
-    if (!editingField || editingValue.trim() === '') {
-      setEditingId(null)
-      setEditingField(null)
-      return
-    }
-
-    try {
-      const updateData = editingField === 'title' 
-        ? { title: editingValue }
-        : { desc: editingValue }
-
-      const { error } = await supabase
-        .from('projects')
-        .update(updateData)
-        .eq('id', projectId)
-
-      if (error) {
-        console.error('Error updating project:', error)
-      } else {
-        console.log(`✓ Project ${editingField} updated`)
-        // Call parent callback to refresh projects list
-        if (onProjectAdded) onProjectAdded()
-      }
-    } catch (err) {
-      console.error('Error saving project:', err)
-    }
-
-    setEditingId(null)
-    setEditingField(null)
   }
 
   return (
@@ -139,82 +102,53 @@ export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
                   {String(i + 1).padStart(2, '0')}
                 </span>
 
-                {/* Title + badge */}
+                {/* Title + badge + edit button */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                  {editingId === p.id && editingField === 'title' ? (
-                    <input
-                      autoFocus
-                      type="text"
-                      value={editingValue}
-                      onChange={(e) => setEditingValue(e.target.value)}
-                      onBlur={() => handleSave(p.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSave(p.id)
-                        if (e.key === 'Escape') setEditingId(null)
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mc-mono"
-                      style={{
-                        flex: 1,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: '#d4d4d8',
-                        background: 'rgba(9,9,11,0.5)',
-                        border: '1px solid rgba(59,130,246,0.3)',
-                        borderRadius: 4,
-                        padding: '4px 8px',
-                        outline: 'none',
-                      }}
-                    />
-                  ) : (
-                    <span 
-                      onClick={(e) => handleFieldClick(e, p.id, 'title', p.title)}
-                      className="mc-mono" 
-                      style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8', flex: 1 }}>
+                  <div style={{ flex: 1 }}>
+                    <span className="mc-mono" style={{ fontSize: 12, fontWeight: 600, color: '#d4d4d8' }}>
                       {p.title}
                     </span>
-                  )}
-                  <span className={`mc-badge ${s.cls}`}>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
-                    {s.label}
-                  </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleEditProject(p.id)
+                      }}
+                      className="mc-mono"
+                      style={{
+                        fontSize: 9,
+                        padding: '4px 6px',
+                        color: '#3b82f6',
+                        border: '1px solid rgba(59,130,246,0.3)',
+                        borderRadius: '4px',
+                        background: 'rgba(59,130,246,0.05)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        const elem = e.currentTarget as HTMLButtonElement
+                        elem.style.background = 'rgba(59,130,246,0.12)'
+                        elem.style.borderColor = 'rgba(59,130,246,0.5)'
+                      }}
+                      onMouseLeave={(e) => {
+                        const elem = e.currentTarget as HTMLButtonElement
+                        elem.style.background = 'rgba(59,130,246,0.05)'
+                        elem.style.borderColor = 'rgba(59,130,246,0.3)'
+                      }}
+                    >
+                      ✎
+                    </button>
+                    <span className={`mc-badge ${s.cls}`}>
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
+                      {s.label}
+                    </span>
+                  </div>
                 </div>
 
-                {editingId === p.id && editingField === 'desc' ? (
-                  <textarea
-                    autoFocus
-                    value={editingValue}
-                    onChange={(e) => setEditingValue(e.target.value)}
-                    onBlur={() => handleSave(p.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) handleSave(p.id)
-                      if (e.key === 'Escape') setEditingId(null)
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mc-mono"
-                    style={{
-                      width: '100%',
-                      fontSize: 10,
-                      color: '#d4d4d8',
-                      background: 'rgba(9,9,11,0.5)',
-                      border: '1px solid rgba(59,130,246,0.3)',
-                      borderRadius: 4,
-                      padding: '6px 8px',
-                      marginBottom: 10,
-                      outline: 'none',
-                      fontFamily: 'inherit',
-                      minHeight: 40,
-                      resize: 'vertical',
-                    }}
-                  />
-                ) : (
-                  <p 
-                    onClick={(e) => handleFieldClick(e, p.id, 'desc', p.desc)}
-                    className="mc-mono" 
-                    style={{ fontSize: 10, color: '#52525b', marginBottom: 10, lineHeight: 1.5, cursor: isHovered ? 'text' : 'pointer' }}>
-                    {p.desc}
-                  </p>
-                )}
+                <p className="mc-mono" style={{ fontSize: 10, color: '#52525b', marginBottom: 10, lineHeight: 1.5 }}>
+                  {p.desc}
+                </p>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                   {p.tags.map((tag) => (
@@ -236,6 +170,49 @@ export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
             if (onProjectAdded) onProjectAdded()
           }} />
         </ProjectModal>
+      )}
+
+      {editingId && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+        }} onClick={() => setEditingId(null)}>
+          <div style={{
+            background: '#0f0f0f',
+            border: '1px solid rgba(39,39,42,0.5)',
+            borderRadius: 12,
+            padding: 20,
+            maxWidth: 500,
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="mc-mono" style={{ fontSize: 14, color: '#d4d4d8' }}>EDIT_PROJECT</h2>
+              <button
+                onClick={() => setEditingId(null)}
+                className="mc-mono"
+                style={{
+                  fontSize: 16,
+                  color: '#52525b',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <ProjectForm projectId={editingId} onProjectAdded={() => {
+              setEditingId(null)
+            }} />
+          </div>
+        </div>
       )}
     </>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -10,15 +10,49 @@ const supabase = createClient(
 
 interface AddEventProps {
   onEventAdded?: () => void
+  eventId?: number
 }
 
-export function AddEvent({ onEventAdded }: AddEventProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+export function AddEvent({ onEventAdded, eventId }: AddEventProps) {
+  const [isExpanded, setIsExpanded] = useState(!!eventId)
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetching, setIsFetching] = useState(!!eventId)
   const [title, setTitle] = useState('')
   const [datetime, setDatetime] = useState('')
   const [meetingLink, setMeetingLink] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  // Fetch event data if editing
+  useEffect(() => {
+    if (eventId) {
+      const fetchEvent = async () => {
+        try {
+          const { data, error: fetchError } = await supabase
+            .from('events')
+            .select('*')
+            .eq('id', eventId)
+            .single()
+
+          if (fetchError) {
+            setError('Failed to load event')
+            return
+          }
+
+          if (data) {
+            setTitle(data.title)
+            setDatetime(data.datetime ? data.datetime.substring(0, 16) : '')
+            setMeetingLink(data.meeting_link || '')
+          }
+        } catch (err) {
+          setError('Failed to load event')
+        } finally {
+          setIsFetching(false)
+        }
+      }
+
+      fetchEvent()
+    }
+  }, [eventId])
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -30,16 +64,34 @@ export function AddEvent({ onEventAdded }: AddEventProps) {
       setIsLoading(true)
       setError(null)
 
-      const { error: insertError } = await supabase.from('events').insert({
-        title: title.trim(),
-        datetime: datetime || null,
-        meeting_link: meetingLink.trim() || null,
-        created_at: new Date().toISOString(),
-      })
+      if (eventId) {
+        // Update existing event
+        const { error: updateError } = await supabase
+          .from('events')
+          .update({
+            title: title.trim(),
+            datetime: datetime || null,
+            meeting_link: meetingLink.trim() || null,
+          })
+          .eq('id', eventId)
 
-      if (insertError) {
-        setError(insertError.message)
-        return
+        if (updateError) {
+          setError(updateError.message)
+          return
+        }
+      } else {
+        // Create new event
+        const { error: insertError } = await supabase.from('events').insert({
+          title: title.trim(),
+          datetime: datetime || null,
+          meeting_link: meetingLink.trim() || null,
+          created_at: new Date().toISOString(),
+        })
+
+        if (insertError) {
+          setError(insertError.message)
+          return
+        }
       }
 
       // Reset form
@@ -49,7 +101,7 @@ export function AddEvent({ onEventAdded }: AddEventProps) {
       setIsExpanded(false)
       onEventAdded?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add event')
+      setError(err instanceof Error ? err.message : 'Failed to save event')
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +115,15 @@ export function AddEvent({ onEventAdded }: AddEventProps) {
     setIsExpanded(false)
   }
 
-  if (!isExpanded) {
+  if (isFetching) {
+    return (
+      <div className="w-full p-4 text-center">
+        <span className="mc-mono" style={{ fontSize: 11, color: '#52525b' }}>Loading...</span>
+      </div>
+    )
+  }
+
+  if (!isExpanded && !eventId) {
     return (
       <button
         onClick={() => setIsExpanded(true)}
@@ -134,7 +194,7 @@ export function AddEvent({ onEventAdded }: AddEventProps) {
           disabled={isLoading}
           className="flex-1 px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? 'Saving...' : 'Save'}
+          {isLoading ? 'Saving...' : eventId ? 'Update' : 'Save'}
         </button>
         <button
           onClick={handleCancel}

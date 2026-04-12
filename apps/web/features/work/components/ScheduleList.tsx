@@ -33,6 +33,7 @@ export function ScheduleList({ schedule }: ScheduleListProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [isAddingEvent, setIsAddingEvent] = useState(false)
+  const [editingEventId, setEditingEventId] = useState<number | null>(null)
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -230,6 +231,32 @@ export function ScheduleList({ schedule }: ScheduleListProps) {
                         {status.toUpperCase()}
                       </span>
                       <button
+                        onClick={() => setEditingEventId(event.id)}
+                        className="mc-mono"
+                        style={{
+                          fontSize: 9,
+                          padding: '4px 6px',
+                          color: '#3b82f6',
+                          border: '1px solid rgba(59,130,246,0.3)',
+                          borderRadius: '4px',
+                          background: 'rgba(59,130,246,0.05)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={(e) => {
+                          const elem = e.currentTarget as HTMLButtonElement
+                          elem.style.background = 'rgba(59,130,246,0.12)'
+                          elem.style.borderColor = 'rgba(59,130,246,0.5)'
+                        }}
+                        onMouseLeave={(e) => {
+                          const elem = e.currentTarget as HTMLButtonElement
+                          elem.style.background = 'rgba(59,130,246,0.05)'
+                          elem.style.borderColor = 'rgba(59,130,246,0.3)'
+                        }}
+                      >
+                        ✎
+                      </button>
+                      <button
                         onClick={() => handleDeleteEvent(event.id)}
                         className="mc-mono"
                         style={{
@@ -263,6 +290,50 @@ export function ScheduleList({ schedule }: ScheduleListProps) {
           )}
         </div>
       </div>
+
+      {editingEventId && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+        }} onClick={() => setEditingEventId(null)}>
+          <div style={{
+            background: '#0f0f0f',
+            border: '1px solid rgba(39,39,42,0.5)',
+            borderRadius: 12,
+            padding: 20,
+            maxWidth: 500,
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 className="mc-mono" style={{ fontSize: 14, color: '#d4d4d8' }}>EDIT_EVENT</h2>
+              <button
+                onClick={() => setEditingEventId(null)}
+                className="mc-mono"
+                style={{
+                  fontSize: 16,
+                  color: '#52525b',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            <AddEvent eventId={editingEventId} onEventAdded={() => {
+              setEditingEventId(null)
+              setRefreshTrigger(prev => prev + 1)
+            }} />
+          </div>
+        </div>
+      )}
     </>
   )
 }

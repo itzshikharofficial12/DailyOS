@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 // Initialize Supabase client
@@ -207,7 +207,7 @@ const SECTION_ICONS: Record<string, string> = {
   notes: '≡',
 }
 
-export function ProjectForm({ onProjectAdded }: { onProjectAdded?: () => void }) {
+export function ProjectForm({ onProjectAdded, projectId }: { onProjectAdded?: () => void; projectId?: number }) {
   const [formData, setFormData] = useState<ProjectFormData>({
     title: '',
     description: '',
@@ -222,6 +222,50 @@ export function ProjectForm({ onProjectAdded }: { onProjectAdded?: () => void })
     notes: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Fetch project data if editing
+  useEffect(() => {
+    if (projectId) {
+      const fetchProject = async () => {
+        try {
+          setIsLoading(true)
+          const { data, error } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('id', projectId)
+            .single()
+
+          if (error) {
+            console.error('Error fetching project:', error)
+            return
+          }
+
+          if (data) {
+            setFormData({
+              title: data.title || '',
+              description: data.desc || data.description || '',
+              status: data.status || 'active',
+              techStack: Array.isArray(data.tech_stack) ? data.tech_stack : [],
+              projectType: data.project_type || '',
+              requirements: data.requirements || '',
+              goal: data.goal || '',
+              githubUrl: data.github_url || '',
+              docsUrl: data.docs_url || '',
+              liveUrl: data.live_url || '',
+              notes: data.notes || '',
+            })
+          }
+        } catch (err) {
+          console.error('Error loading project:', err)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+
+      fetchProject()
+    }
+  }, [projectId])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -238,10 +282,11 @@ export function ProjectForm({ onProjectAdded }: { onProjectAdded?: () => void })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Prepare data for insertion - MATCH DB COLUMNS EXACTLY
+    // Prepare data - MATCH DB COLUMNS EXACTLY
     const projectData = {
       title: formData.title || '',
       description: formData.description || '',  // Use 'description' not 'desc'
+      desc: formData.description || '',  // Also keep 'desc' for compatibility
       status: formData.status.toLowerCase(),     // Ensure lowercase
       tech_stack: formData.techStack && formData.techStack.length > 0
         ? formData.techStack
@@ -255,21 +300,32 @@ export function ProjectForm({ onProjectAdded }: { onProjectAdded?: () => void })
     }
 
     try {
-      // Insert into Supabase
-      const { data, error } = await supabase
-        .from('projects')
-        .insert([projectData])
-        .select()
+      let result
+      if (projectId) {
+        // Update existing project
+        result = await supabase
+          .from('projects')
+          .update(projectData)
+          .eq('id', projectId)
+          .select()
+      } else {
+        // Insert new project
+        result = await supabase
+          .from('projects')
+          .insert([projectData])
+          .select()
+      }
       
-      console.log('INSERT DATA:', data)
-      console.log('INSERT ERROR:', error)
+      const { data, error } = result
+      console.log('SAVE DATA:', data)
+      console.log('SAVE ERROR:', error)
       
       if (error) {
-        console.error('Error inserting project:', error.message || error)
+        console.error('Error saving project:', error.message || error)
         return
       }
       
-      console.log('Project inserted successfully:', data)
+      console.log('Project saved successfully:', data)
       
       // Reset form on success
       setFormData({
