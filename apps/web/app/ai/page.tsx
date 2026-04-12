@@ -448,20 +448,52 @@ export default function AIPage() {
           
           if (error) {
             console.error('❌ Failed to create task:', error.message)
+            const confirmation = `❌ Failed to create task: ${parsed.data.title}`
             setMessages(p => {
               const u = [...p]
               const last = u[u.length - 1]
-              if (last.type === 'ai') last.content = '❌ Failed to create task'
+              if (last.type === 'ai') last.content = confirmation
               return u
             })
+            // Save confirmation to DB
+            if (conversationId && !conversationId.startsWith('local_')) {
+              ;(async () => {
+                try {
+                  await supabase.from('messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: confirmation,
+                  })
+                  console.log('✓ Failure confirmation saved to DB')
+                } catch (err) {
+                  console.error('Error saving confirmation:', err)
+                }
+              })()
+            }
           } else {
             console.log('✓ Task created successfully')
+            const confirmation = `✓ Task created: ${parsed.data.title}`
             setMessages(p => {
               const u = [...p]
               const last = u[u.length - 1]
-              if (last.type === 'ai') last.content = '✓ Task created: ' + parsed.data.title
+              if (last.type === 'ai') last.content = confirmation
               return u
             })
+            // Save confirmation to DB
+            if (conversationId && !conversationId.startsWith('local_')) {
+              ;(async () => {
+                try {
+                  await supabase.from('messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: confirmation,
+                  })
+                  console.log('✓ Task creation confirmation saved to DB')
+                } catch (err) {
+                  console.error('Error saving confirmation:', err)
+                }
+              })()
+            }
           }
         }
         
@@ -478,20 +510,52 @@ export default function AIPage() {
           
           if (error) {
             console.error('❌ Failed to create event:', error.message)
+            const confirmation = `❌ Failed to create event: ${parsed.data.title}`
             setMessages(p => {
               const u = [...p]
               const last = u[u.length - 1]
-              if (last.type === 'ai') last.content = '❌ Failed to create event'
+              if (last.type === 'ai') last.content = confirmation
               return u
             })
+            // Save confirmation to DB
+            if (conversationId && !conversationId.startsWith('local_')) {
+              ;(async () => {
+                try {
+                  await supabase.from('messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: confirmation,
+                  })
+                  console.log('✓ Failure confirmation saved to DB')
+                } catch (err) {
+                  console.error('Error saving confirmation:', err)
+                }
+              })()
+            }
           } else {
             console.log('✓ Event created successfully')
+            const confirmation = `✓ Event created: ${parsed.data.title}`
             setMessages(p => {
               const u = [...p]
               const last = u[u.length - 1]
-              if (last.type === 'ai') last.content = '✓ Event created: ' + parsed.data.title
+              if (last.type === 'ai') last.content = confirmation
               return u
             })
+            // Save confirmation to DB
+            if (conversationId && !conversationId.startsWith('local_')) {
+              ;(async () => {
+                try {
+                  await supabase.from('messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: confirmation,
+                  })
+                  console.log('✓ Event creation confirmation saved to DB')
+                } catch (err) {
+                  console.error('Error saving confirmation:', err)
+                }
+              })()
+            }
           }
         }
       } catch (e) {
