@@ -45,6 +45,10 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
 
   const handleAddTask = async () => {
     if (!newTask.trim()) return
+    if (!supabase) {
+      setError('Database not configured')
+      return
+    }
     try {
       const { data, error: supabaseError } = await supabase
         .from('tasks').insert([{ text: newTask.trim(), done: false }]).select()
@@ -60,6 +64,10 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
   const toggleTask = async (id: number) => {
     const task = tasks.find((t) => t.id === id)
     if (!task) return
+    if (!supabase) {
+      setError('Database not configured')
+      return
+    }
     try {
       const { error: supabaseError } = await supabase
         .from('tasks').update({ done: !task.done }).eq('id', id)
@@ -71,6 +79,10 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
   }
 
   const deleteTask = async (id: number) => {
+    if (!supabase) {
+      setError('Database not configured')
+      return
+    }
     try {
       console.log('Deleting task:', id)
       const { error } = await supabase
@@ -98,6 +110,11 @@ export function TaskList({ newTask, onNewTaskChange }: TaskListProps) {
   const handleSaveEdit = async (taskId: number) => {
     if (!editValue.trim()) {
       setEditingId(null)
+      return
+    }
+
+    if (!supabase) {
+      setError('Database not configured')
       return
     }
 
