@@ -247,6 +247,7 @@ export default function AIPage() {
   const [time, setTime] = useState('')
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isInitializing, setIsInitializing] = useState(true)
+  const [insights, setInsights] = useState<string[]>([])
   const bottomRef             = useRef<HTMLDivElement>(null)
   const inputRef              = useRef<HTMLInputElement>(null)
 
@@ -351,6 +352,26 @@ export default function AIPage() {
     setTime(t)
   }, [])
 
+  // Fetch insights when component mounts
+  useEffect(() => {
+    const fetchInsights = async () => {
+      try {
+        const response = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: 'GET_INSIGHTS' }),
+        })
+        const data = await response.json()
+        if (data.insights && Array.isArray(data.insights)) {
+          setInsights(data.insights)
+        }
+      } catch (err) {
+        console.error('Error fetching insights:', err)
+      }
+    }
+    fetchInsights()
+  }, [])
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -409,52 +430,126 @@ export default function AIPage() {
       if (!res.ok) throw new Error('API error')
       const { reply } = await res.json()
       
-      let i = 0
-      const iv = setInterval(() => {
-        i++
-        const text = reply.substring(0, i)
-        setMessages(p => {
-          const u = [...p]
-          const last = u[u.length - 1]
-          if (last.type === 'ai') last.content = text
-          return u
-        })
-        if (i >= reply.length) { 
-          clearInterval(iv)
-          setLoading(false)
+      // Try to parse as JSON action
+      let isAction = false
+      try {
+        const parsed = JSON.parse(reply)
+        
+        if (parsed.action === 'create_task' && parsed.data?.title) {
+          console.log('🔧 Creating task:', parsed.data.title)
+          isAction = true
           
-          // Insert AI response into database after streaming is complete
-          if (conversationId) {
-            ;(async () => {
-              try {
-                // Validate conversationId before saving
-                if (!conversationId || conversationId.startsWith('local_')) {
-                  console.error('Invalid conversationId:', conversationId)
-                  return
-                }
-
-                console.log('conversationId:', conversationId)
-                console.log('Saving message:', reply)
-                
-                const { error } = await supabase.from('messages').insert({
-                  conversation_id: conversationId,
-                  role: 'assistant',
-                  content: reply,
-                })
-
-                if (error) {
-                  console.error('❌ AI message save failed:', error.message)
-                  console.log('Insert error:', error)
-                } else {
-                  console.log('✓ AI message saved to DB')
-                }
-              } catch (err) {
-                console.error('Error saving AI message:', err)
-              }
-            })()
+          const { error } = await supabase
+            .from('tasks')
+            .insert({
+              text: parsed.data.title,
+              done: false,
+            })
+          
+          if (error) {
+            console.error('❌ Failed to create task:', error.message)
+            setMessages(p => {
+              const u = [...p]
+              const last = u[u.length - 1]
+              if (last.type === 'ai') last.content = '❌ Failed to create task'
+              return u
+            })
+          } else {
+            console.log('✓ Task created successfully')
+            setMessages(p => {
+              const u = [...p]
+              const last = u[u.length - 1]
+              if (last.type === 'ai') last.content = '✓ Task created: ' + parsed.data.title
+              return u
+            })
           }
         }
-      }, 18)
+        
+        if (parsed.action === 'create_event' && parsed.data?.title && parsed.data?.datetime) {
+          console.log('🔧 Creating event:', parsed.data.title)
+          isAction = true
+          
+          const { error } = await supabase
+            .from('events')
+            .insert({
+              title: parsed.data.title,
+              datetime: parsed.data.datetime,
+            })
+          
+          if (error) {
+            console.error('❌ Failed to create event:', error.message)
+            setMessages(p => {
+              const u = [...p]
+              const last = u[u.length - 1]
+              if (last.type === 'ai') last.content = '❌ Failed to create event'
+              return u
+            })
+          } else {
+            console.log('✓ Event created successfully')
+            setMessages(p => {
+              const u = [...p]
+              const last = u[u.length - 1]
+              if (last.type === 'ai') last.content = '✓ Event created: ' + parsed.data.title
+              return u
+            })
+          }
+        }
+      } catch (e) {
+        // Not JSON, treat as normal message
+        console.log('→ Normal message response')
+      }
+      
+      // If not an action, stream the response normally
+      if (!isAction) {
+        let i = 0
+        const iv = setInterval(() => {
+          i++
+          const text = reply.substring(0, i)
+          setMessages(p => {
+            const u = [...p]
+            const last = u[u.length - 1]
+            if (last.type === 'ai') last.content = text
+            return u
+          })
+          if (i >= reply.length) { 
+            clearInterval(iv)
+            setLoading(false)
+            
+            // Insert AI response into database after streaming is complete
+            if (conversationId) {
+              ;(async () => {
+                try {
+                  // Validate conversationId before saving
+                  if (!conversationId || conversationId.startsWith('local_')) {
+                    console.error('Invalid conversationId:', conversationId)
+                    return
+                  }
+
+                  console.log('conversationId:', conversationId)
+                  console.log('Saving message:', reply)
+                  
+                  const { error } = await supabase.from('messages').insert({
+                    conversation_id: conversationId,
+                    role: 'assistant',
+                    content: reply,
+                  })
+
+                  if (error) {
+                    console.error('❌ AI message save failed:', error.message)
+                    console.log('Insert error:', error)
+                  } else {
+                    console.log('✓ AI message saved to DB')
+                  }
+                } catch (err) {
+                  console.error('Error saving AI message:', err)
+                }
+              })()
+            }
+          }
+        }, 18)
+      } else {
+        setLoading(false)
+      }
     } catch {
       setMessages(p => {
         const u = [...p]
@@ -537,6 +632,28 @@ export default function AIPage() {
         }}
       >
         <div style={{ maxWidth: 820, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* ── INSIGHTS CARD ── */}
+          {insights.length > 0 && (
+            <div className="nova-msg-in" style={{
+              background: 'rgba(24,24,27,0.8)',
+              border: '1px solid rgba(39,39,42,0.8)',
+              borderRadius: '6px',
+              padding: '10px 12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+            }}>
+              <span className="nova-mono" style={{ fontSize: 8, color: '#52525b', letterSpacing: '0.12em' }}>ACTIVE INSIGHTS</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {insights.map((insight, idx) => (
+                  <div key={idx} className="nova-mono" style={{ fontSize: 11, color: '#a1a1aa', lineHeight: 1.5 }}>
+                    {insight}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {messages.length === 1 && (
             <div className="nova-msg-in" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>

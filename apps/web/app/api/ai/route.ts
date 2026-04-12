@@ -10,6 +10,47 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
+// Generate insights from user data
+function generateInsights(tasks: any[], events: any[], projects: any[], ideas: any[]): string[] {
+  const insights: string[] = []
+
+  // 1. Tasks insight
+  const pendingTasks = tasks?.filter((t: any) => !t.done) || []
+  if (pendingTasks.length > 0) {
+    insights.push(`📋 You have ${pendingTasks.length} pending task${pendingTasks.length > 1 ? 's' : ''}. Start by focusing on the most important one.`)
+  }
+
+  // 2. Events insight - check for upcoming event within 1 hour
+  if (events && events.length > 0) {
+    const now = new Date()
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+    
+    const upcomingEvent = events.find((e: any) => {
+      const eventTime = new Date(e.datetime)
+      return eventTime > now && eventTime <= oneHourLater
+    })
+
+    if (upcomingEvent) {
+      const eventTime = new Date(upcomingEvent.datetime)
+      const timeUntil = Math.round((eventTime.getTime() - now.getTime()) / 60000)
+      insights.push(`⏰ Alert: "${upcomingEvent.title}" in ${timeUntil} minute${timeUntil > 1 ? 's' : ''}.`)
+    }
+  }
+
+  // 3. Projects insight
+  const activeProjects = projects?.filter((p: any) => p.status === 'active') || []
+  if (activeProjects.length > 0) {
+    insights.push(`🚀 ${activeProjects.length} active project${activeProjects.length > 1 ? 's' : ''} in progress.`)
+  }
+
+  // 4. Ideas insight
+  if (ideas && ideas.length > 0) {
+    insights.push(`💡 ${ideas.length} idea${ideas.length > 1 ? 's' : ''} waiting to be converted into tasks.`)
+  }
+
+  return insights
+}
+
 export async function POST(req: Request) {
   try {
     const { message } = await req.json()
@@ -21,6 +62,34 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'No message provided' }), {
         status: 400,
       })
+    }
+
+    // Handle GET_INSIGHTS request
+    if (message === 'GET_INSIGHTS') {
+      // Fetch all data for insights
+      const { data: events } = await supabase
+        .from('events')
+        .select('*')
+        .order('datetime', { ascending: true })
+
+      const { data: tasks } = await supabase
+        .from('tasks')
+        .select('*')
+
+      const { data: projects } = await supabase
+        .from('projects')
+        .select('*')
+
+      const { data: ideas } = await supabase
+        .from('ideas')
+        .select('*')
+
+      const insightsList = generateInsights(tasks || [], events || [], projects || [], ideas || [])
+
+      return new Response(
+        JSON.stringify({ insights: insightsList }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
     }
 
     if (!process.env.GROQ_API_KEY) {
@@ -107,11 +176,34 @@ export async function POST(req: Request) {
           role: 'system',
           content: `You are NOVA, an AI assistant inside a productivity OS.
 
-Rules:
-- Only use provided data
-- Do not make things up
-- Keep responses short (max 4 lines)
-- Be actionable and direct
+You can perform actions.
+
+If user asks to create something, respond ONLY in JSON format:
+
+Examples:
+
+Create task:
+{
+  "action": "create_task",
+  "data": {
+    "title": "Finish backend"
+  }
+}
+
+Create event:
+{
+  "action": "create_event",
+  "data": {
+    "title": "Meeting",
+    "datetime": "2026-04-12T17:00:00"
+  }
+}
+
+Otherwise:
+- respond normally (short text)
+
+Do not explain JSON
+Do not mix text + JSON
 
 User context:
 
