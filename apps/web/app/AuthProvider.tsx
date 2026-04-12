@@ -15,16 +15,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { session },
       } = await supabase.auth.getSession()
 
-      const publicRoutes = ['/login', '/']
-      const isPublicRoute = publicRoutes.includes(pathname)
+      const isAuthPage = pathname === '/login'
 
-      // If no session and trying to access protected route, redirect to login
-      if (!session && !isPublicRoute) {
+      // If NOT on auth page AND no session, redirect to login
+      if (!isAuthPage && !session) {
         router.push('/login')
+        return
       }
 
-      // If has session and on login page, redirect to work
-      if (session && pathname === '/login') {
+      // If on auth page AND has session, redirect to work
+      if (isAuthPage && session) {
         router.push('/work')
       }
     }
@@ -35,10 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session && pathname !== '/login' && pathname !== '/') {
+      const isAuthPage = pathname === '/login'
+
+      // If no session and not on auth page, redirect to login
+      if (!session && !isAuthPage) {
         router.push('/login')
       }
-      if (session && pathname === '/login') {
+
+      // If has session and on auth page, redirect to work
+      if (session && isAuthPage) {
         router.push('/work')
       }
     })
