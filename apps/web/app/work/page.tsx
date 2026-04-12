@@ -13,11 +13,13 @@ import { QuickStats } from '@/features/work/components/QuickStatsRefactored'
 import { IdeasPanel } from '@/features/work/components/IdeasPanelRefactored'
 import { LinksPanel } from '@/features/work/components/LinksPanelRefactored'
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-)
+// Initialize Supabase client - only if env vars exist
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+  : null
 
 const SCHEDULE = [
   { label: 'Standup call',        time: '9:00 AM',   type: 'upcoming' },
@@ -54,6 +56,14 @@ export default function WorkPage() {
     try {
       setIsLoading(true)
       setError(null)
+
+      if (!supabase) {
+        setError('Database not configured')
+        setProjects([])
+        setIsLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('projects')
         .select('*')
