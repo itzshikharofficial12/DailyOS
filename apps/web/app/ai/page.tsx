@@ -256,7 +256,7 @@ export default function AIPage() {
   // Initialize conversation on page load
   const createNewConversation = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('conversations')
         .insert([{}])
         .select()
@@ -309,7 +309,7 @@ export default function AIPage() {
       console.log('→ Fetching messages for conversation:', conversationId)
       console.log('conversationId:', conversationId)
 
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
@@ -403,7 +403,7 @@ export default function AIPage() {
         console.log('conversationId:', conversationId)
         console.log('Saving message:', userMessage)
         
-        const { error } = await supabase.from('messages').insert({
+        const { error } = await supabase!.from('messages').insert({
           conversation_id: conversationId,
           role: 'user',
           content: userMessage,
@@ -441,7 +441,7 @@ export default function AIPage() {
           console.log('🔧 Creating task:', parsed.data.title)
           isAction = true
           
-          const { error } = await supabase
+          const { error } = await supabase!
             .from('tasks')
             .insert({
               text: parsed.data.title,
@@ -461,7 +461,7 @@ export default function AIPage() {
             if (conversationId && !conversationId.startsWith('local_')) {
               ;(async () => {
                 try {
-                  await supabase.from('messages').insert({
+                  await supabase!.from('messages').insert({
                     conversation_id: conversationId,
                     role: 'assistant',
                     content: confirmation,
@@ -485,7 +485,7 @@ export default function AIPage() {
             if (conversationId && !conversationId.startsWith('local_')) {
               ;(async () => {
                 try {
-                  await supabase.from('messages').insert({
+                  await supabase!.from('messages').insert({
                     conversation_id: conversationId,
                     role: 'assistant',
                     content: confirmation,
@@ -503,7 +503,7 @@ export default function AIPage() {
           console.log('🔧 Creating event:', parsed.data.title)
           isAction = true
           
-          const { error } = await supabase
+          const { error } = await supabase!
             .from('events')
             .insert({
               title: parsed.data.title,
@@ -523,7 +523,7 @@ export default function AIPage() {
             if (conversationId && !conversationId.startsWith('local_')) {
               ;(async () => {
                 try {
-                  await supabase.from('messages').insert({
+                  await supabase!.from('messages').insert({
                     conversation_id: conversationId,
                     role: 'assistant',
                     content: confirmation,
@@ -547,7 +547,7 @@ export default function AIPage() {
             if (conversationId && !conversationId.startsWith('local_')) {
               ;(async () => {
                 try {
-                  await supabase.from('messages').insert({
+                  await supabase!.from('messages').insert({
                     conversation_id: conversationId,
                     role: 'assistant',
                     content: confirmation,
@@ -596,7 +596,7 @@ export default function AIPage() {
                   console.log('conversationId:', conversationId)
                   console.log('Saving message:', reply)
                   
-                  const { error } = await supabase.from('messages').insert({
+                  const { error } = await supabase!.from('messages').insert({
                     conversation_id: conversationId,
                     role: 'assistant',
                     content: reply,
