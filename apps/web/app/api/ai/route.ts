@@ -1,9 +1,8 @@
 import Groq from 'groq-sdk'
 import { createClient } from '@supabase/supabase-js'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+// Initialize Groq only if API key exists
+const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -273,6 +272,13 @@ export async function POST(req: Request) {
       }
     } catch (err) {
       console.error('Error in memory fetch:', err)
+    }
+
+    if (!groq) {
+      return Response.json(
+        { error: 'GROQ_API_KEY is not configured' },
+        { status: 500 }
+      )
     }
 
     const completion = await groq.chat.completions.create({
