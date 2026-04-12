@@ -645,7 +645,7 @@ export default function AIPage() {
         padding: '20px 18px 10px 18px',
         borderBottom: '1px solid rgba(39,39,42,0.8)',
         background: 'rgba(9,9,11,0.97)',
-        flexShrink: 0,
+        flex: '0 0 auto',
         position: 'relative',
         zIndex: 10,
         width: '100%',
@@ -796,7 +796,7 @@ export default function AIPage() {
 
       {/* ── INPUT — always visible at bottom ── */}
       <div style={{
-        flexShrink: 0,
+        flex: '0 0 auto',
         borderTop: '1px solid rgba(39,39,42,0.8)',
         background: 'rgba(9,9,11,0.97)',
         position: 'relative',
