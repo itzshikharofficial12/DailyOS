@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useCurrentProject } from '@/store/useCurrentProject'
+import { getVSCodeUrl } from '@/lib/github'
 import { ProjectForm } from './ProjectForm'
 import { ProjectModal } from './ProjectModal'
 
@@ -94,6 +95,28 @@ export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
   const now = new Date()
   const ts = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-${String(now.getUTCDate()).padStart(2,'0')} ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`
 
+  const handleLetsBuild = () => {
+    if (!githubUrl) {
+      console.warn('No GitHub URL available for this project')
+      return
+    }
+
+    const vscodeUrl = getVSCodeUrl(githubUrl)
+
+    if (!vscodeUrl) {
+      console.error('Invalid GitHub URL format. Expected: https://github.com/owner/repo')
+      // Open GitHub profile instead
+      window.open(githubUrl, '_blank')
+      return
+    }
+
+    // Open GitHub repo in one tab
+    window.open(githubUrl, '_blank')
+    
+    // Open VS Code web editor in another tab
+    window.open(vscodeUrl, '_blank')
+  }
+
   return (
     <>
       <div className="mc-root mc-card col-span-2" style={{ padding: 0 }}>
@@ -172,7 +195,12 @@ export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
 
             {/* Right actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-              <button className="mc-btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              <button 
+                onClick={handleLetsBuild}
+                className="mc-btn-primary" 
+                style={{ whiteSpace: 'nowrap' }}
+                title={githubUrl ? "Open GitHub repo and VS Code editor" : "Add GitHub repository to this project"}
+              >
                 ▶ Let's Build
               </button>
               <button className="mc-btn-secondary">View Log</button>
