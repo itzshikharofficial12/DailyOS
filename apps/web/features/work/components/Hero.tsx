@@ -1,10 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import { useCurrentProject } from '@/store/useCurrentProject'
 import { getVSCodeUrl } from '@/lib/github'
 import { ProjectForm } from './ProjectForm'
 import { ProjectModal } from './ProjectModal'
+
+const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ? createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+  : null
 
 interface Project {
   id: string | number
@@ -28,12 +36,43 @@ const DEFAULT_STACK_TAGS = ['React', 'Supabase', 'Tailwind', 'Next.js']
 export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
   const { currentProjectId } = useCurrentProject()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState<string>('')
+  const [isSavingStatus, setIsSavingStatus] = useState(false)
+  const statusDropdownRef = useRef<HTMLDivElement>(null)
+
+  const STATUS_OPTIONS = ['planned', 'active', 'review']
+  const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
+    active: { bg: 'rgba(59, 130, 246, 0.1)', text: '#3b82f6', dot: '#3b82f6' },
+    review: { bg: 'rgba(245, 158, 11, 0.1)', text: '#f59e0b', dot: '#f59e0b' },
+    planned: { bg: 'rgba(82, 82, 91, 0.1)', text: '#a1a1aa', dot: '#52525b' },
+  }
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setStatusDropdownOpen(false)
+      }
+    }
+    if (statusDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [statusDropdownOpen])
 
   // Get current project from Zustand ID, or fallback to first active
   let currentProject = projects.find((p) => p.id.toString() === currentProjectId && p.status === 'active')
   if (!currentProject) {
     currentProject = projects.find((p) => p.status === 'active')
   }
+
+  // Set current status when project changes
+  useEffect(() => {
+    if (currentProject) {
+      setCurrentStatus(currentProject.status)
+    }
+  }, [currentProject?.id])
 
   // If no projects, show empty state
   if (!currentProject) {
@@ -94,6 +133,31 @@ export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
   const liveUrl = currentProject.live_url
   const now = new Date()
   const ts = `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,'0')}-${String(now.getUTCDate()).padStart(2,'0')} ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')} UTC`
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!supabase || !currentProject) return
+    
+    setCurrentStatus(newStatus)
+    setStatusDropdownOpen(false)
+    setIsSavingStatus(true)
+
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', currentProject.id)
+
+      if (error) {
+        console.error('Error updating status:', error)
+        setCurrentStatus(currentProject.status)
+      }
+    } catch (err) {
+      console.error('Error updating status:', err)
+      setCurrentStatus(currentProject.status)
+    } finally {
+      setIsSavingStatus(false)
+    }
+  }
 
   const handleLetsBuild = () => {
     console.log('Let\'s Build clicked! githubUrl:', githubUrl)
@@ -284,6 +348,91 @@ export function Hero({ goal, onGoalChange, projects = [] }: HeroProps) {
 
             {/* Right actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+              {/* Status badge - inline editable */}
+              <div 
+                ref={statusDropdownRef}
+                style={{ position: 'relative' }}
+              >
+                <button
+                  onClick={() => setStatusDropdownOpen(!statusDropdownOpen)}
+                  disabled={isSavingStatus}
+                  style={{
+                    padding: '8px 12px',
+                    background: STATUS_COLORS[currentStatus]?.bg || 'rgba(82, 82, 91, 0.1)',
+                    border: `1px solid ${STATUS_COLORS[currentStatus]?.dot || '#52525b'}40`,
+                    borderRadius: '6px',
+                    color: STATUS_COLORS[currentStatus]?.text || '#a1a1aa',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    cursor: isSavingStatus ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    fontFamily: 'JetBrains Mono, monospace',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    opacity: isSavingStatus ? 0.6 : 1,
+                    whiteSpace: 'nowrap',
+                  }}
+                  title="Click to change status"
+                >
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[currentStatus]?.dot || '#52525b' }} />
+                  {currentStatus.toUpperCase()}
+                  <span style={{ fontSize: 9, marginLeft: 2 }}>▼</span>
+                </button>
+
+                {/* Dropdown menu */}
+                {statusDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: 4,
+                      background: 'rgba(39, 39, 42, 0.95)',
+                      border: '1px solid rgba(63, 63, 70, 0.7)',
+                      borderRadius: '6px',
+                      zIndex: 1000,
+                      minWidth: 120,
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    {STATUS_OPTIONS.map((option) => (
+                      <button
+                        key={option}
+                        onClick={() => handleStatusChange(option)}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          background: currentStatus === option ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                          border: 'none',
+                          color: STATUS_COLORS[option]?.text || '#a1a1aa',
+                          fontSize: 11,
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          transition: 'background 0.15s',
+                          borderBottom: option !== STATUS_OPTIONS[STATUS_OPTIONS.length - 1] ? '1px solid rgba(63, 63, 70, 0.3)' : 'none',
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59, 130, 246, 0.05)'
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLButtonElement).style.background = currentStatus === option ? 'rgba(59, 130, 246, 0.1)' : 'transparent'
+                        }}
+                      >
+                        <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: STATUS_COLORS[option]?.dot || '#52525b' }} />
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
+                        {currentStatus === option && <span style={{ marginLeft: 'auto' }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button 
                 onClick={handleLetsBuild}
                 className="mc-btn-primary" 
