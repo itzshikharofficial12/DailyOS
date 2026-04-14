@@ -285,8 +285,7 @@ export function ProjectForm({ onProjectAdded, projectId }: { onProjectAdded?: ()
     // Prepare data - MATCH DB COLUMNS EXACTLY
     const projectData = {
       title: formData.title || '',
-      description: formData.description || '',  // Use 'description' not 'desc'
-      desc: formData.description || '',  // Also keep 'desc' for compatibility
+      description: formData.description || '',
       status: formData.status.toLowerCase(),     // Ensure lowercase
       tech_stack: formData.techStack && formData.techStack.length > 0
         ? formData.techStack
