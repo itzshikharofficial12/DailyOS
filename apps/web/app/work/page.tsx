@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'
 import { GreetingHeader } from '@/features/work/components/GreetingHeader'
 import { CurrentProjectCard } from '@/features/work/components/CurrentProjectCard'
 import { Hero } from '@/features/work/components/Hero'
@@ -12,6 +13,8 @@ import { ScheduleList } from '@/features/work/components/ScheduleList'
 import { QuickStats } from '@/features/work/components/QuickStatsRefactored'
 import { IdeasPanel } from '@/features/work/components/IdeasPanelRefactored'
 import { LinksPanel } from '@/features/work/components/LinksPanelRefactored'
+import { ProjectForm } from '@/features/work/components/ProjectForm'
+import { ProjectModal } from '@/features/work/components/ProjectModal'
 
 // Initialize Supabase client - only if env vars exist
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -50,6 +53,8 @@ export default function WorkPage() {
   const [projects, setProjects] = useState<any[]>([])  // Start with empty array
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const router = useRouter()
 
   // Fetch projects from Supabase
   const fetchProjects = async () => {
@@ -106,6 +111,8 @@ export default function WorkPage() {
     fetchProjects()
   }, [])
 
+  const activeProjects = projects.filter(project => project.status === 'active')
+
   return (
     <div
       style={{
@@ -131,14 +138,23 @@ export default function WorkPage() {
         }}
       >
         {/* LEFT MAIN */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Top grid: Hero, Task, FocusTimer */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Hero goal={goal} onGoalChange={setGoal} projects={projects} />
             <TaskList newTask={newTask} onNewTaskChange={setNewTask} />
             <FocusTimer />
-            <ProjectGrid projects={projects} onProjectAdded={fetchProjects} />
-            <ScheduleList schedule={SCHEDULE} />
+
           </div>
+
+          {/* Full width: Active Projects */}
+          <ProjectGrid 
+            projects={projects} 
+            onProjectAdded={fetchProjects}
+            isModalOpen={isModalOpen}
+            setIsModalOpen={setIsModalOpen}
+          />
+          <ScheduleList schedule={SCHEDULE} />
         </div>
 
         {/* RIGHT PANEL */}
@@ -149,6 +165,15 @@ export default function WorkPage() {
           <LinksPanel links={LINKS} />
         </div>
       </div>
+
+      {isModalOpen && (
+        <ProjectModal onClose={() => setIsModalOpen(false)}>
+          <ProjectForm onProjectAdded={() => {
+            setIsModalOpen(false)
+            fetchProjects()
+          }} />
+        </ProjectModal>
+      )}
     </div>
   )
 }

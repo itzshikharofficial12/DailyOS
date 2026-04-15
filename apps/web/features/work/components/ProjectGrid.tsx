@@ -17,7 +17,9 @@ interface Project {
 
 interface ProjectGridProps {
   projects: Project[]
-  onProjectAdded?: () => void
+  onProjectAdded: () => void
+  isModalOpen?: boolean
+  setIsModalOpen?: (open: boolean) => void
 }
 
 const STATUS_MAP: Record<string, { dot: string; cls: string; label: string }> = {
@@ -35,7 +37,7 @@ const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC
     )
   : null
 
-export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
+export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, setIsModalOpen }: ProjectGridProps) {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [hoveredId, setHoveredId] = useState<number | null>(null)
@@ -89,37 +91,68 @@ export function ProjectGrid({ projects, onProjectAdded }: ProjectGridProps) {
   return (
     <>
       <style>{MC_STYLES}</style>
-      <div className="mc-root mc-card col-span-2" style={{ padding: 0 }}>
-        <div className="mc-corner mc-corner-tl" /><div className="mc-corner mc-corner-tr" />
-        <div className="mc-corner mc-corner-bl" /><div className="mc-corner mc-corner-br" />
-
-        {/* Header */}
-        <div className="mc-card-header" style={{ justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#3b82f6', fontSize: 12 }}>⬡</span>
-            <span className="mc-mono mc-label">ACTIVE_PROJECTS</span>
-            <div style={{ width: 1, height: 10, background: '#27272a' }} />
-            <span className="mc-mono mc-label">{projects.length} REGISTERED</span>
-          </div>
+      <div className="mc-root mc-card" style={{ padding: 0 }}>
+      {/* Header with title and action buttons */}
+      <div className="mc-card-header" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div className="mc-dot" style={{ background: '#22c55e' }} />
+          <span className="mc-mono mc-label">ACTIVE PROJECTS</span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => router.push('/done')}
             className="mc-mono"
             style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px',
-              background: 'rgba(59,130,246,0.08)',
-              border: '1px solid rgba(59,130,246,0.2)',
-              borderRadius: 5, fontSize: 10, color: '#60a5fa',
-              cursor: 'pointer', letterSpacing: '0.08em', transition: 'all 0.15s',
+              fontSize: 12,
+              color: '#a1a1aa',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'color 150ms ease-out',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.15)' }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(59,130,246,0.08)' }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = '#fafafa'
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = '#a1a1aa'
+            }}
           >
-            <span>+</span> NEW PROJECT
+            Completed →
+          </button>
+
+          <button
+            onClick={() => setIsModalOpen?.(true)}
+            className="mc-mono"
+            style={{
+              fontSize: 12,
+              whiteSpace: 'nowrap',
+              padding: '4px 10px',
+              background: 'transparent',
+              border: '1px solid #3b82f6',
+              color: '#3b82f6',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 150ms ease-out',
+            }}
+            onMouseEnter={(e) => {
+              const target = e.currentTarget as HTMLButtonElement
+              target.style.borderColor = '#60a5fa'
+              target.style.color = '#60a5fa'
+              target.style.background = 'rgba(59, 130, 246, 0.05)'
+            }}
+            onMouseLeave={(e) => {
+              const target = e.currentTarget as HTMLButtonElement
+              target.style.borderColor = '#3b82f6'
+              target.style.color = '#3b82f6'
+              target.style.background = 'transparent'
+            }}
+          >
+            + New Project
           </button>
         </div>
-
-        {/* Grid */}
+      </div>        {/* Grid */}
         <div style={{ padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative', zIndex: 1 }}>
           {projects.map((p, i) => {
             const s = STATUS_MAP[p.status] ?? STATUS_MAP.planned
