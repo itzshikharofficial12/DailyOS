@@ -111,7 +111,18 @@ export default function WorkPage() {
     fetchProjects()
   }, [])
 
-  const activeProjects = projects.filter(project => project.status === 'active')
+  const activeProjects = projects.filter(project => ['active', 'planned'].includes(project.status))
+  const doneProjects = projects.filter(project => project.status === 'done')
+
+  const handleStatusChange = (projectId: number, newStatus: string) => {
+    setProjects(prev =>
+      prev.map(p =>
+        p.id === projectId
+          ? { ...p, status: newStatus }
+          : p
+      )
+    )
+  }
 
   return (
     <div
@@ -149,10 +160,11 @@ export default function WorkPage() {
 
           {/* Full width: Active Projects */}
           <ProjectGrid 
-            projects={projects} 
+            projects={activeProjects} 
             onProjectAdded={fetchProjects}
             isModalOpen={isModalOpen}
             setIsModalOpen={setIsModalOpen}
+            onStatusChange={handleStatusChange}
           />
           <ScheduleList schedule={SCHEDULE} />
         </div>

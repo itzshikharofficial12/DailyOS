@@ -20,15 +20,17 @@ interface ProjectGridProps {
   onProjectAdded: () => void
   isModalOpen?: boolean
   setIsModalOpen?: (open: boolean) => void
+  onStatusChange?: (projectId: number, newStatus: string) => void
 }
 
 const STATUS_MAP: Record<string, { dot: string; cls: string; label: string }> = {
   active:  { dot: '#22c55e', cls: 'mc-badge-active',  label: 'ACTIVE'  },
   review:  { dot: '#3b82f6', cls: 'mc-badge-review',  label: 'REVIEW'  },
   planned: { dot: '#a1a1aa', cls: 'mc-badge-planned', label: 'PLANNED' },
+  done:    { dot: '#10b981', cls: 'mc-badge-done',    label: 'DONE'    },
 }
 
-const STATUS_OPTIONS = ['planned', 'active', 'review']
+const STATUS_OPTIONS = ['planned', 'active', 'review', 'done']
 
 const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ? createClient(
@@ -37,12 +39,11 @@ const supabase = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC
     )
   : null
 
-export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, setIsModalOpen }: ProjectGridProps) {
+export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, setIsModalOpen, onStatusChange }: ProjectGridProps) {
   const [open, setOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [hoveredId, setHoveredId] = useState<number | null>(null)
   const [statusDropdownId, setStatusDropdownId] = useState<number | null>(null)
-  const [updatingId, setUpdatingId] = useState<number | null>(null)
   const statusDropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -60,10 +61,11 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
   }, [statusDropdownId])
 
   const handleStatusChange = async (projectId: number, newStatus: string) => {
-    if (!supabase) return
-    
-    setUpdatingId(projectId)
-    setStatusDropdownId(null)
+    if (!supabase) {
+      console.error('Supabase not configured')
+      return
+    }
+    console.log('Status change:', projectId, newStatus)
 
     try {
       const { error } = await supabase
@@ -72,15 +74,18 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
         .eq('id', projectId)
 
       if (error) {
-        console.error('Error updating status:', error)
+        console.error('Error updating status:', error?.message || JSON.stringify(error))
       } else {
-        // Trigger parent to refetch projects
-        if (onProjectAdded) onProjectAdded()
+        console.log('Status updated successfully')
+        // Call parent callback to update local state immediately
+        if (onStatusChange) {
+          onStatusChange(projectId, newStatus)
+        }
       }
     } catch (err) {
       console.error('Error updating status:', err)
     } finally {
-      setUpdatingId(null)
+      setStatusDropdownId(null)
     }
   }
 
@@ -91,7 +96,7 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
   return (
     <>
       <style>{MC_STYLES}</style>
-      <div className="mc-root mc-card" style={{ padding: 0 }}>
+      <div className="mc-root mc-card" style={{ padding: 0, overflow: 'visible' }}>
       {/* Header with title and action buttons */}
       <div className="mc-card-header" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -153,7 +158,7 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
           </button>
         </div>
       </div>        {/* Grid */}
-        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative', zIndex: 1 }}>
+        <div style={{ padding: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, position: 'relative', zIndex: 1, overflow: 'visible' }}>
           {projects.map((p, i) => {
             const s = STATUS_MAP[p.status] ?? STATUS_MAP.planned
             const isHovered = hoveredId === p.id
@@ -163,7 +168,7 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                 key={p.id}
                 onMouseEnter={() => setHoveredId(p.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                onClick={() => !isEditing && router.push(`/work/${p.id}`)}
+                onClick={() => !isEditing && statusDropdownId !== p.id && router.push(`/work/${p.id}`)}
                 style={{
                   background: isHovered ? 'rgba(39,39,42,0.5)' : 'rgba(9,9,11,0.8)',
                   border: '1px solid rgba(39,39,42,0.8)',
@@ -172,7 +177,7 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                   transition: 'background 0.15s, border-color 0.15s',
                   cursor: isHovered ? 'text' : 'pointer',
                   position: 'relative',
-                  overflow: 'hidden',
+                  overflow: 'visible',
                 }}
               >
                 {/* Index */}
@@ -227,7 +232,6 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                           e.stopPropagation()
                           setStatusDropdownId(statusDropdownId === p.id ? null : p.id)
                         }}
-                        disabled={updatingId === p.id}
                         className="mc-mono"
                         style={{
                           fontSize: 9,
@@ -236,19 +240,16 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                           border: `1px solid ${s.dot}40`,
                           borderRadius: '4px',
                           background: `${s.dot}08`,
-                          cursor: updatingId === p.id ? 'not-allowed' : 'pointer',
+                          cursor: 'pointer',
                           transition: 'all 0.15s',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 4,
-                          opacity: updatingId === p.id ? 0.6 : 1,
                         }}
                         onMouseEnter={(e) => {
-                          if (updatingId !== p.id) {
-                            const elem = e.currentTarget as HTMLButtonElement
-                            elem.style.background = `${s.dot}12`
-                            elem.style.borderColor = `${s.dot}80`
-                          }
+                          const elem = e.currentTarget as HTMLButtonElement
+                          elem.style.background = `${s.dot}12`
+                          elem.style.borderColor = `${s.dot}80`
                         }}
                         onMouseLeave={(e) => {
                           const elem = e.currentTarget as HTMLButtonElement
@@ -266,14 +267,15 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                         <div
                           style={{
                             position: 'absolute',
+                            top: '100%',
                             right: 0,
-                            marginTop: 2,
+                            marginTop: 8,
                             background: '#18181b',
                             border: '1px solid #27272a',
                             borderRadius: '6px',
-                            zIndex: 1000,
+                            zIndex: 9999,
                             minWidth: 100,
-                            overflow: 'hidden',
+                            overflow: 'visible',
                             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
                           }}
                         >
@@ -282,7 +284,8 @@ export function ProjectGrid({ projects, onProjectAdded, isModalOpen = false, set
                             return (
                               <button
                                 key={option}
-                                onClick={(e) => {
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
                                   e.stopPropagation()
                                   handleStatusChange(p.id, option)
                                 }}
